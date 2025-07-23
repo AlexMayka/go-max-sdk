@@ -2,4 +2,4 @@ package maxsdk
 
 import "github.com/AlexMayka/go-max-sdk/internal/types"
 
-type BotContext = types.BotContext
+type FSM = types.FSM

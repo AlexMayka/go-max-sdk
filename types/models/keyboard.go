@@ -25,21 +25,21 @@ type InlineKeyboardButton struct {
 type InlineKeyboardButtonType string
 
 const (
-	// Callback кнопка - сервер MAX отправляет событие с типом message_callback
+	// InlineKeyboardButtonTypeCallback Callback кнопка - сервер MAX отправляет событие с типом message_callback
 	InlineKeyboardButtonTypeCallback InlineKeyboardButtonType = "callback"
 
-	// Link кнопка - позволяет открыть ссылку в новой вкладке
+	// InlineKeyboardButtonTypeLink Link кнопка - позволяет открыть ссылку в новой вкладке
 	InlineKeyboardButtonTypeLink InlineKeyboardButtonType = "link"
 
-	// Request contact кнопка - запрашивает у пользователя разрешение на доступ к контактам
+	// InlineKeyboardButtonTypeRequestContact Request contact кнопка - запрашивает у пользователя разрешение на доступ к контактам
 	InlineKeyboardButtonTypeRequestContact InlineKeyboardButtonType = "request_contact"
 
-	// Request geo location кнопка - запрашивает у пользователя его местоположение
+	// InlineKeyboardButtonTypeRequestGeoLocation Request geo location кнопка - запрашивает у пользователя его местоположение
 	InlineKeyboardButtonTypeRequestGeoLocation InlineKeyboardButtonType = "request_geo_location"
 
-	// Open app кнопка - открывает мини-приложение
+	// InlineKeyboardButtonTypeOpenApp Open app кнопка - открывает мини-приложение
 	InlineKeyboardButtonTypeOpenApp InlineKeyboardButtonType = "open_app"
 
-	// Message кнопка - отправляет боту текстовое сообщение
+	// InlineKeyboardButtonTypeMessage Message кнопка - отправляет боту текстовое сообщение
 	InlineKeyboardButtonTypeMessage InlineKeyboardButtonType = "message"
 )

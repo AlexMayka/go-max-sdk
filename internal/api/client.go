@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/AlexMayka/go-max-sdk/internal/config"
+	"github.com/AlexMayka/go-max-sdk/internal/utils"
 	"io"
 	"net/http"
 	"net/url"
@@ -28,7 +29,7 @@ func NewClient(token string) *Client {
 func (c *Client) parseRequest(req interface{}, cfg *config.EndpointConfig) (map[string]string, map[string]string, interface{}, error) {
 	reqType := reflect.TypeOf(req)
 	if reqType != cfg.RequestModel {
-		return nil, nil, nil, fmt.Errorf("неправильный тип запроса")
+		return nil, nil, nil, fmt.Errorf("invalid request type")
 	}
 
 	pathParams := make(map[string]string)
@@ -42,33 +43,9 @@ func (c *Client) parseRequest(req interface{}, cfg *config.EndpointConfig) (map[
 		field := t.Field(i)
 		value := v.Field(i)
 
-		if pathTag := field.Tag.Get("path"); pathTag != "" {
-			pathParams[pathTag] = getStringValue(value)
-			continue
-		}
-
-		if queryTag := field.Tag.Get("query"); queryTag != "" {
-			tag := strings.Split(queryTag, ",")
-			hasOmitEmpty := len(tag) == 2 && tag[1] == "omitempty"
-
-			if hasOmitEmpty && shouldOmit(value) {
-				continue
-			}
-
-			queryParams[tag[0]] = getStringValue(value)
-			continue
-		}
-
-		if jsonTag := field.Tag.Get("json"); jsonTag != "" && jsonTag != "-" {
-			tag := strings.Split(jsonTag, ",")
-			hasOmitEmpty := len(tag) == 2 && tag[1] == "omitempty"
-
-			if hasOmitEmpty && shouldOmit(value) {
-				continue
-			}
-
-			jsonBody[tag[0]] = getInterfaceValue(value)
-		}
+		c.parsePathParams(field, value, pathParams)
+		c.parseQueryParams(field, value, queryParams)
+		c.parseJSONBody(field, value, jsonBody)
 	}
 
 	return pathParams, queryParams, jsonBody, nil
@@ -85,7 +62,7 @@ func (c *Client) buildURL(path string, pathParams, queryParams map[string]string
 	}
 	address.Path = path
 
-	values := address.Query()
+	values := url.Values{}
 
 	if c.token != "" {
 		values.Add("access_token", c.token)
@@ -132,6 +109,10 @@ func sendRequest(ctx context.Context, jsonBody interface{}, cfg *config.Endpoint
 		return nil, err
 	}
 
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status code: %d - %s", response.StatusCode, string(responseBody))
+	}
+
 	responsePtr := reflect.New(cfg.ResponseModel)
 	responseValue := responsePtr.Interface()
 
@@ -161,32 +142,41 @@ func (c *Client) Call(ctx context.Context, endpoint config.Endpoint, req interfa
 	return answer, nil
 }
 
-func shouldOmit(value reflect.Value) bool {
-	if value.Kind() == reflect.Ptr && value.IsNil() {
-		return true
+func (c *Client) parsePathParams(field reflect.StructField, value reflect.Value, pathParams map[string]string) {
+	pathTag := field.Tag.Get("path")
+	if pathTag != "" {
+		pathParams[pathTag] = utils.GetStringValue(value)
 	}
-	if value.Kind() != reflect.Ptr && value.IsZero() {
-		return true
-	}
-	return false
 }
 
-func getInterfaceValue(value reflect.Value) interface{} {
-	if value.Kind() == reflect.Ptr {
-		if value.IsNil() {
-			return nil
-		}
-		return value.Elem().Interface()
+func (c *Client) parseQueryParams(field reflect.StructField, value reflect.Value, queryParams map[string]string) {
+	queryTag := field.Tag.Get("query")
+	if queryTag == "" {
+		return
 	}
-	return value.Interface()
+
+	tag := strings.Split(queryTag, ",")
+	hasOmitEmpty := len(tag) == 2 && tag[1] == "omitempty"
+
+	if hasOmitEmpty && utils.ShouldOmit(value) {
+		return
+	}
+
+	queryParams[tag[0]] = utils.GetStringValue(value)
 }
 
-func getStringValue(value reflect.Value) string {
-	if value.Kind() == reflect.Ptr {
-		if value.IsNil() {
-			return ""
-		}
-		return fmt.Sprintf("%v", value.Elem().Interface())
+func (c *Client) parseJSONBody(field reflect.StructField, value reflect.Value, jsonBody map[string]interface{}) {
+	jsonTag := field.Tag.Get("json")
+	if jsonTag == "" || jsonTag == "-" {
+		return
 	}
-	return fmt.Sprintf("%v", value.Interface())
+
+	tag := strings.Split(jsonTag, ",")
+	hasOmitEmpty := len(tag) == 2 && tag[1] == "omitempty"
+
+	if hasOmitEmpty && utils.ShouldOmit(value) {
+		return
+	}
+
+	jsonBody[tag[0]] = utils.GetInterfaceValue(value)
 }

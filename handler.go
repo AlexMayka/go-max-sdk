@@ -2,4 +2,5 @@ package maxsdk
 
 import "github.com/AlexMayka/go-max-sdk/internal/types"
 
-type BotContext = types.BotContext
+type Handler = types.Handler
+type Middleware = types.Middleware
