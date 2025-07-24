@@ -1,31 +1,13 @@
 package router
 
-type RouteType int
+import "github.com/AlexMayka/go-max-sdk/internal/types"
 
+// Re-export types for convenience
 const (
-	RouteBotStarted RouteType = iota
-	RouteMsg
-	RouteCommand
-	RouteCallback
-	RouteRegex
-	RouteAny
+	RouteBotStarted = types.RouteBotStarted
+	RouteMsg        = types.RouteMsg
+	RouteCommand    = types.RouteCommand
+	RouteCallback   = types.RouteCallback
+	RouteRegex      = types.RouteRegex
+	RouteAny        = types.RouteAny
 )
-
-type EventType int
-
-const (
-	EventMessage EventType = iota
-	EventCommand
-	EventCallback
-	EventBotStarted
-	EventAny
-)
-
-var TypeRouterToEvent = map[RouteType]EventType{
-	RouteMsg:        EventMessage,
-	RouteRegex:      EventMessage,
-	RouteCommand:    EventCommand,
-	RouteCallback:   EventCallback,
-	RouteBotStarted: EventBotStarted,
-	RouteAny:        EventAny,
-}

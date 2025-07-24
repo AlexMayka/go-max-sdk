@@ -4,14 +4,14 @@ import "github.com/AlexMayka/go-max-sdk/internal/types"
 
 type Route struct {
 	Prefix     string
-	Type       RouteType
+	Type       types.RouteType
 	Handler    types.Handler
 	Middleware []types.Middleware
 	Pattern    *string
 	State      string
 }
 
-func NewRoute(prefix string, router RouteType, handler types.Handler, pattern *string, state string) types.Route {
+func NewRoute(prefix string, router types.RouteType, handler types.Handler, pattern *string, state string) types.Route {
 	return &Route{
 		Prefix:     prefix,
 		Type:       router,
@@ -30,4 +30,24 @@ func (r *Route) Use(md ...types.Middleware) types.Route {
 func (r *Route) UseState(state string) types.Route {
 	r.State = state
 	return r
+}
+
+func (r *Route) GetType() types.RouteType {
+	return r.Type
+}
+
+func (r *Route) GetPattern() *string {
+	return r.Pattern
+}
+
+func (r *Route) GetHandler() types.Handler {
+	return r.Handler
+}
+
+func (r *Route) GetMiddleware() []types.Middleware {
+	return r.Middleware
+}
+
+func (r *Route) GetState() string {
+	return r.State
 }

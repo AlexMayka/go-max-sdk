@@ -8,10 +8,10 @@ import (
 
 type Router struct {
 	Prefix   string
-	Parent   *Router
-	Children []*Router
+	Parent   types.Router
+	Children []types.Router
 
-	Routes      []*Route
+	Routes      []types.Route
 	Middlewares []types.Middleware
 	State       string
 }
@@ -20,9 +20,9 @@ func NewRouter(prefix string, parent *Router) types.Router {
 	return &Router{
 		Prefix:   prefix,
 		Parent:   parent,
-		Children: make([]*Router, 0),
+		Children: make([]types.Router, 0),
 
-		Routes:      make([]*Route, 0),
+		Routes:      make([]types.Route, 0),
 		Middlewares: make([]types.Middleware, 0),
 		State:       "",
 	}
@@ -34,7 +34,7 @@ func DefaultRouter() types.Router {
 
 func (r *Router) Group(prefix string) types.Router {
 	router := NewRouter(prefix, r)
-	r.Children = append(r.Children, router.(*Router))
+	r.Children = append(r.Children, router)
 	return router
 }
 
@@ -76,13 +76,44 @@ func (r *Router) Any(handler types.Handler) types.Route {
 	return r.addRoute(RouteAny, handler, nil)
 }
 
-func (r *Router) addRoute(router RouteType, handler types.Handler, pattern *string) types.Route {
+func (r *Router) addRoute(router types.RouteType, handler types.Handler, pattern *string) types.Route {
 	prefix := r.Prefix
 	if pattern != nil {
 		prefix = prefix + ":" + *pattern
 	}
 
 	route := NewRoute(prefix, router, handler, pattern, r.State)
-	r.Routes = append(r.Routes, route.(*Route))
+	r.Routes = append(r.Routes, route)
 	return route
+}
+
+func (r *Router) GetRoutes() []types.Route {
+	routes := make([]types.Route, len(r.Routes))
+	for i, route := range r.Routes {
+		routes[i] = route
+	}
+	return routes
+}
+
+func (r *Router) GetChildren() []types.Router {
+	children := make([]types.Router, len(r.Children))
+	for i, child := range r.Children {
+		children[i] = child
+	}
+	return children
+}
+
+func (r *Router) GetMiddlewares() []types.Middleware {
+	return r.Middlewares
+}
+
+func (r *Router) GetState() string {
+	return r.State
+}
+
+func (r *Router) GetParent() types.Router {
+	if r.Parent == nil {
+		return nil
+	}
+	return r.Parent
 }

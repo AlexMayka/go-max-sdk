@@ -11,9 +11,32 @@ type Router interface {
 	OnCallback(call string, handler Handler) Route
 	OnStarted(handler Handler) Route
 	Any(handler Handler) Route
+
+	GetRoutes() []Route
+	GetChildren() []Router
+	GetMiddlewares() []Middleware
+	GetState() string
+	GetParent() Router
 }
 
 type Route interface {
 	UseState(state string) Route
 	Use(middlewares ...Middleware) Route
+
+	GetType() RouteType
+	GetPattern() *string
+	GetHandler() Handler
+	GetMiddleware() []Middleware
+	GetState() string
 }
+
+type RouteType int
+
+const (
+	RouteMsg RouteType = iota
+	RouteRegex
+	RouteCommand
+	RouteCallback
+	RouteBotStarted
+	RouteAny
+)

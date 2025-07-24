@@ -18,7 +18,7 @@ type TestRequest struct {
 }
 
 func TestParseRequest(t *testing.T) {
-	client := NewClient("test-token")
+	client := NewClient("test-token").(*Client)
 
 	cfg := &config.EndpointConfig{
 		RequestModel: reflect.TypeOf((*TestRequest)(nil)).Elem(),
@@ -105,7 +105,7 @@ func TestParseRequest(t *testing.T) {
 }
 
 func TestBuildURL(t *testing.T) {
-	client := NewClient("test-token")
+	client := NewClient("test-token").(*Client)
 
 	t.Run("WithPathAndQueryParams", func(t *testing.T) {
 		pathParams := map[string]string{"id": "123", "type": "user"}
@@ -145,7 +145,7 @@ func TestBuildURL(t *testing.T) {
 }
 
 func TestParsePathParams(t *testing.T) {
-	client := NewClient("test-token")
+	client := NewClient("test-token").(*Client)
 	pathParams := make(map[string]string)
 
 	field := reflect.StructField{
@@ -162,7 +162,7 @@ func TestParsePathParams(t *testing.T) {
 }
 
 func TestParseQueryParams(t *testing.T) {
-	client := NewClient("test-token")
+	client := NewClient("test-token").(*Client)
 
 	t.Run("RequiredParam", func(t *testing.T) {
 		queryParams := make(map[string]string)
@@ -199,7 +199,7 @@ func TestParseQueryParams(t *testing.T) {
 }
 
 func TestParseJSONBody(t *testing.T) {
-	client := NewClient("test-token")
+	client := NewClient("test-token").(*Client)
 
 	t.Run("RequiredField", func(t *testing.T) {
 		jsonBody := make(map[string]interface{})

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/AlexMayka/go-max-sdk/internal/config"
+	"github.com/AlexMayka/go-max-sdk/internal/types"
 	"github.com/AlexMayka/go-max-sdk/internal/utils"
 	"io"
 	"net/http"
@@ -19,7 +20,7 @@ type Client struct {
 	httpClient *http.Client
 }
 
-func NewClient(token string) *Client {
+func NewClient(token string) types.APIClient {
 	return &Client{
 		token:      token,
 		httpClient: &http.Client{},
