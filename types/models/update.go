@@ -5,16 +5,13 @@ package models
 // Каждое обновление имеет свой номер последовательности и тип события.
 type Update struct {
 	// Тип события
-	UpdateType string `json:"update_type"`
+	UpdateType UpdateType `json:"update_type"`
 
 	// Unix-время, когда произошло событие
 	Timestamp int64 `json:"timestamp"`
 
 	// Новое созданное сообщение
 	Message *Message `json:"message,omitempty"`
-
-	// Callback данные от inline-клавиатуры (только для message_callback)
-	CallbackID *string `json:"callback_id,omitempty"`
 
 	// Payload кнопки (только для message_callback)
 	Payload *string `json:"payload,omitempty"`

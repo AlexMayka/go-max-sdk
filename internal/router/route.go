@@ -1,24 +1,33 @@
 package router
 
-import "github.com/AlexMayka/go-max-sdk/internal/types"
+import (
+	"github.com/AlexMayka/go-max-sdk/internal/types"
+	"regexp"
+)
 
 type Route struct {
 	Prefix     string
-	Type       types.RouteType
+	Type       types.EventType
+	MatchType  types.MatchType
 	Handler    types.Handler
 	Middleware []types.Middleware
-	Pattern    *string
-	State      string
+
+	Pattern       *string
+	CompiledRegex *regexp.Regexp
+
+	State string
 }
 
-func NewRoute(prefix string, router types.RouteType, handler types.Handler, pattern *string, state string) types.Route {
+func NewRoute(prefix string, eventType types.EventType, matchType types.MatchType, handler types.Handler, pattern *string, state string, regexp *regexp.Regexp) types.Route {
 	return &Route{
-		Prefix:     prefix,
-		Type:       router,
-		Handler:    handler,
-		Middleware: make([]types.Middleware, 0),
-		Pattern:    pattern,
-		State:      state,
+		Prefix:        prefix,
+		Type:          eventType,
+		MatchType:     matchType,
+		Handler:       handler,
+		Middleware:    make([]types.Middleware, 0),
+		Pattern:       pattern,
+		State:         state,
+		CompiledRegex: regexp,
 	}
 }
 
@@ -32,7 +41,15 @@ func (r *Route) UseState(state string) types.Route {
 	return r
 }
 
-func (r *Route) GetType() types.RouteType {
+func (r *Route) GetMatchType() types.MatchType {
+	return r.MatchType
+}
+
+func (r *Route) GetPrefix() string {
+	return r.Prefix
+}
+
+func (r *Route) GetType() types.EventType {
 	return r.Type
 }
 
@@ -50,4 +67,8 @@ func (r *Route) GetMiddleware() []types.Middleware {
 
 func (r *Route) GetState() string {
 	return r.State
+}
+
+func (r *Route) GetCompiledRegex() *regexp.Regexp {
+	return r.CompiledRegex
 }

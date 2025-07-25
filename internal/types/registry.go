@@ -14,18 +14,11 @@ const (
 	EventCallback
 	EventBotStarted
 	EventAny
+	EventNone
 )
 
 type RouteHandler struct {
+	Match   MatchType
 	Handler Handler
 	Route   Route
-}
-
-var TypeRouterToEvent = map[RouteType]EventType{
-	RouteMsg:        EventMessage,
-	RouteRegex:      EventMessage,
-	RouteCommand:    EventCommand,
-	RouteCallback:   EventCallback,
-	RouteBotStarted: EventBotStarted,
-	RouteAny:        EventAny,
 }

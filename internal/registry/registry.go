@@ -44,8 +44,14 @@ func (r *routeRegistry) buildFromRouter(router types.Router) {
 	for _, route := range router.GetRoutes() {
 		routeMiddlewares := append(middlewares, route.GetMiddleware()...)
 		handler := r.wrapHandler(route.GetHandler(), routeMiddlewares)
-		event := types.TypeRouterToEvent[route.GetType()]
-		r.addValue(handler, event, route)
+		eventType := route.GetType()
+		r.addValue(handler, eventType, route)
+	}
+
+	if anyRoute := router.GetAnyMsg(); anyRoute != nil {
+		routeMiddlewares := append(middlewares, anyRoute.GetMiddleware()...)
+		handler := r.wrapHandler(anyRoute.GetHandler(), routeMiddlewares)
+		r.addValue(handler, types.EventAny, anyRoute)
 	}
 
 	for _, child := range router.GetChildren() {
@@ -54,7 +60,7 @@ func (r *routeRegistry) buildFromRouter(router types.Router) {
 }
 
 func (r *routeRegistry) addValue(h types.Handler, event types.EventType, route types.Route) {
-	routeHandler := types.RouteHandler{Handler: h, Route: route}
+	routeHandler := types.RouteHandler{Match: route.GetMatchType(), Handler: h, Route: route}
 	state := route.GetState()
 	if _, ok := r.dispatch[state]; !ok {
 		r.dispatch[state] = make(map[types.EventType][]types.RouteHandler)

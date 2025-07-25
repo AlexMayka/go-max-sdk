@@ -1,5 +1,7 @@
 package types
 
+import "regexp"
+
 type Router interface {
 	Group(prefix string) Router
 	Use(middlewares ...Middleware) Router
@@ -8,6 +10,9 @@ type Router interface {
 	OnCommand(cmd string, handler Handler) Route
 	OnMessage(msg string, handler Handler) Route
 	OnRegex(regex string, handler Handler) Route
+	OnPrefix(prefix string, handler Handler) Route
+	OnSuffix(suffix string, handler Handler) Route
+	OnContains(sub string, handler Handler) Route
 	OnCallback(call string, handler Handler) Route
 	OnStarted(handler Handler) Route
 	Any(handler Handler) Route
@@ -17,26 +22,19 @@ type Router interface {
 	GetMiddlewares() []Middleware
 	GetState() string
 	GetParent() Router
+	GetAnyMsg() Route
 }
 
 type Route interface {
 	UseState(state string) Route
 	Use(middlewares ...Middleware) Route
 
-	GetType() RouteType
+	GetPrefix() string
+	GetMatchType() MatchType
+	GetType() EventType
 	GetPattern() *string
 	GetHandler() Handler
 	GetMiddleware() []Middleware
 	GetState() string
+	GetCompiledRegex() *regexp.Regexp
 }
-
-type RouteType int
-
-const (
-	RouteMsg RouteType = iota
-	RouteRegex
-	RouteCommand
-	RouteCallback
-	RouteBotStarted
-	RouteAny
-)

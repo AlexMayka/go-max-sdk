@@ -117,10 +117,10 @@ func TestRouterRoutes(t *testing.T) {
 		}
 
 		r := router.Routes[0]
-		if r.Type != RouteBotStarted {
-			t.Errorf("Expected route type RouteBotStarted, got %v", r.Type)
+		if r.GetType() != types.EventBotStarted {
+			t.Errorf("Expected route type RouteBotStarted, got %v", r.GetType())
 		}
-		if r.Pattern != nil {
+		if r.GetPattern() != nil {
 			t.Error("Expected pattern to be nil for OnStarted")
 		}
 	})
@@ -134,14 +134,14 @@ func TestRouterRoutes(t *testing.T) {
 		}
 
 		r := router.Routes[0]
-		if r.Type != RouteMsg {
-			t.Errorf("Expected route type RouteMsg, got %v", r.Type)
+		if r.GetType() != types.EventMessage {
+			t.Errorf("Expected route type RouteMsg, got %v", r.GetType())
 		}
-		if r.Pattern == nil || *r.Pattern != "hello" {
-			t.Errorf("Expected pattern 'hello', got %v", r.Pattern)
+		if r.GetPattern() == nil || *r.GetPattern() != "hello" {
+			t.Errorf("Expected pattern 'hello', got %v", r.GetPattern())
 		}
-		if r.Prefix != ":hello" {
-			t.Errorf("Expected prefix ':hello', got '%s'", r.Prefix)
+		if r.GetPrefix() != ":hello" {
+			t.Errorf("Expected prefix ':hello', got '%s'", r.GetPrefix())
 		}
 	})
 
@@ -154,11 +154,11 @@ func TestRouterRoutes(t *testing.T) {
 		}
 
 		r := router.Routes[0]
-		if r.Type != RouteCommand {
-			t.Errorf("Expected route type RouteCommand, got %v", r.Type)
+		if r.GetType() != types.EventCommand {
+			t.Errorf("Expected route type RouteCommand, got %v", r.GetType())
 		}
-		if r.Pattern == nil || *r.Pattern != "start" {
-			t.Errorf("Expected pattern 'start', got %v", r.Pattern)
+		if r.GetPattern() == nil || *r.GetPattern() != "start" {
+			t.Errorf("Expected pattern 'start', got %v", r.GetPattern())
 		}
 	})
 
@@ -171,11 +171,11 @@ func TestRouterRoutes(t *testing.T) {
 		}
 
 		r := router.Routes[0]
-		if r.Type != RouteCallback {
-			t.Errorf("Expected route type RouteCallback, got %v", r.Type)
+		if r.GetType() != types.EventCallback {
+			t.Errorf("Expected route type RouteCallback, got %v", r.GetType())
 		}
-		if r.Pattern == nil || *r.Pattern != "button_click" {
-			t.Errorf("Expected pattern 'button_click', got %v", r.Pattern)
+		if r.GetPattern() == nil || *r.GetPattern() != "button_click" {
+			t.Errorf("Expected pattern 'button_click', got %v", r.GetPattern())
 		}
 	})
 
@@ -187,11 +187,11 @@ func TestRouterRoutes(t *testing.T) {
 			t.Error("Expected route to be created")
 		}
 
-		r := router.Routes[0]
-		if r.Type != RouteAny {
-			t.Errorf("Expected route type RouteAny, got %v", r.Type)
+		r := router.GetAnyMsg()
+		if r.GetType() != types.EventAny {
+			t.Errorf("Expected route type RouteAny, got %v", r.GetType())
 		}
-		if r.Pattern != nil {
+		if r.GetPattern() != nil {
 			t.Error("Expected pattern to be nil for Any")
 		}
 	})
@@ -210,11 +210,11 @@ func TestRouterRegexValidation(t *testing.T) {
 		}
 
 		r := router.Routes[0]
-		if r.Type != RouteRegex {
-			t.Errorf("Expected route type RouteRegex, got %v", r.Type)
+		if r.GetType() != types.EventMessage {
+			t.Errorf("Expected route type EventMessage, got %v", r.GetType())
 		}
-		if r.Pattern == nil || *r.Pattern != `^\d+$` {
-			t.Errorf("Expected pattern '^\\d+$', got %v", r.Pattern)
+		if r.GetPattern() == nil || *r.GetPattern() != `^\d+$` {
+			t.Errorf("Expected pattern '^\\d+$', got %v", r.GetPattern())
 		}
 	})
 
@@ -267,8 +267,8 @@ func TestRouterPrefixBuilding(t *testing.T) {
 
 		r := router.Routes[0]
 		expectedPrefix := "api:users"
-		if r.Prefix != expectedPrefix {
-			t.Errorf("Expected prefix '%s', got '%s'", expectedPrefix, r.Prefix)
+		if r.GetPrefix() != expectedPrefix {
+			t.Errorf("Expected prefix '%s', got '%s'", expectedPrefix, r.GetPrefix())
 		}
 	})
 
@@ -278,8 +278,8 @@ func TestRouterPrefixBuilding(t *testing.T) {
 
 		r := router.Routes[0]
 		expectedPrefix := "api"
-		if r.Prefix != expectedPrefix {
-			t.Errorf("Expected prefix '%s', got '%s'", expectedPrefix, r.Prefix)
+		if r.GetPrefix() != expectedPrefix {
+			t.Errorf("Expected prefix '%s', got '%s'", expectedPrefix, r.GetPrefix())
 		}
 	})
 
@@ -289,8 +289,8 @@ func TestRouterPrefixBuilding(t *testing.T) {
 
 		r := router.Routes[0]
 		expectedPrefix := ":help"
-		if r.Prefix != expectedPrefix {
-			t.Errorf("Expected prefix '%s', got '%s'", expectedPrefix, r.Prefix)
+		if r.GetPrefix() != expectedPrefix {
+			t.Errorf("Expected prefix '%s', got '%s'", expectedPrefix, r.GetPrefix())
 		}
 	})
 
@@ -298,10 +298,10 @@ func TestRouterPrefixBuilding(t *testing.T) {
 		router := NewRouter("", nil).(*Router)
 		_ = router.Any(handler)
 
-		r := router.Routes[0]
+		r := router.GetAnyMsg()
 		expectedPrefix := ""
-		if r.Prefix != expectedPrefix {
-			t.Errorf("Expected prefix '%s', got '%s'", expectedPrefix, r.Prefix)
+		if r.GetPrefix() != expectedPrefix {
+			t.Errorf("Expected prefix '%s', got '%s'", expectedPrefix, r.GetPrefix())
 		}
 	})
 }
@@ -340,10 +340,10 @@ func TestRouterChaining(t *testing.T) {
 		}
 
 		r := router.(*Router).Routes[0]
-		if len(r.Middleware) != 1 {
+		if len(r.GetMiddleware()) != 1 {
 			t.Error("Expected middleware to be added to route")
 		}
-		if r.State != "test_state" {
+		if r.GetState() != "test_state" {
 			t.Error("Expected state to be set on route")
 		}
 	})
@@ -364,7 +364,7 @@ func TestRouterEdgeCases(t *testing.T) {
 		}
 
 		for _, route := range router.Routes {
-			if route.Pattern == nil || *route.Pattern != "" {
+			if route.GetPattern() == nil || *route.GetPattern() != "" {
 				t.Error("Expected empty string pattern to be preserved")
 			}
 		}
@@ -390,8 +390,8 @@ func TestRouterEdgeCases(t *testing.T) {
 		}
 
 		for i, route := range router.Routes {
-			if route.Pattern == nil || *route.Pattern != specialPatterns[i] {
-				t.Errorf("Expected pattern '%s', got %v", specialPatterns[i], route.Pattern)
+			if route.GetPattern() == nil || *route.GetPattern() != specialPatterns[i] {
+				t.Errorf("Expected pattern '%s', got %v", specialPatterns[i], route.GetPattern())
 			}
 		}
 	})
@@ -408,8 +408,8 @@ func TestRouterEdgeCases(t *testing.T) {
 		}
 
 		for _, route := range router.Routes {
-			if route.Type != RouteMsg {
-				t.Error("Expected all routes to be RouteMsg type")
+			if route.GetType() != types.EventMessage {
+				t.Error("Expected all routes to be EventMessage type")
 			}
 		}
 	})
@@ -424,12 +424,11 @@ func TestRouterEdgeCases(t *testing.T) {
 		}
 
 		r := router.Routes[0]
-		if r.Handler != nil {
+		if r.GetHandler() != nil {
 			t.Error("Expected handler to be nil")
 		}
 	})
 }
-
 
 func TestRegexCompilation(t *testing.T) {
 	testCases := []struct {

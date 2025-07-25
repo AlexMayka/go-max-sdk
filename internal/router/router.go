@@ -14,9 +14,10 @@ type Router struct {
 	Routes      []types.Route
 	Middlewares []types.Middleware
 	State       string
+	AnyMsg      types.Route
 }
 
-func NewRouter(prefix string, parent *Router) types.Router {
+func NewRouter(prefix string, parent types.Router) types.Router {
 	return &Router{
 		Prefix:   prefix,
 		Parent:   parent,
@@ -49,42 +50,69 @@ func (r *Router) UseState(state string) types.Router {
 }
 
 func (r *Router) OnStarted(handler types.Handler) types.Route {
-	return r.addRoute(RouteBotStarted, handler, nil)
+	return r.addRoute(types.EventBotStarted, types.MatchBotStarted, handler, nil)
 }
 
 func (r *Router) OnMessage(msg string, handler types.Handler) types.Route {
-	return r.addRoute(RouteMsg, handler, &msg)
-}
-
-func (r *Router) OnCommand(cmd string, handler types.Handler) types.Route {
-	return r.addRoute(RouteCommand, handler, &cmd)
-}
-
-func (r *Router) OnCallback(call string, handler types.Handler) types.Route {
-	return r.addRoute(RouteCallback, handler, &call)
+	return r.addRoute(types.EventMessage, types.MatchExact, handler, &msg)
 }
 
 func (r *Router) OnRegex(regex string, handler types.Handler) types.Route {
-	if _, err := regexp.Compile(regex); err != nil {
-		panic(fmt.Sprintf("regex compile error: %s", err.Error()))
-	}
+	return r.addRouteRegex(types.EventMessage, types.MatchRegex, handler, regex)
+}
 
-	return r.addRoute(RouteRegex, handler, &regex)
+func (r *Router) OnPrefix(prefix string, handler types.Handler) types.Route {
+	return r.addRoute(types.EventMessage, types.MatchPrefix, handler, &prefix)
+}
+
+func (r *Router) OnSuffix(suffix string, handler types.Handler) types.Route {
+	return r.addRoute(types.EventMessage, types.MatchSuffix, handler, &suffix)
+}
+
+func (r *Router) OnContains(sub string, handler types.Handler) types.Route {
+	return r.addRoute(types.EventMessage, types.MatchContains, handler, &sub)
+}
+
+func (r *Router) OnCommand(cmd string, handler types.Handler) types.Route {
+	return r.addRoute(types.EventCommand, types.MatchCommand, handler, &cmd)
+}
+
+func (r *Router) OnCallback(call string, handler types.Handler) types.Route {
+	return r.addRoute(types.EventCallback, types.MatchCallback, handler, &call)
 }
 
 func (r *Router) Any(handler types.Handler) types.Route {
-	return r.addRoute(RouteAny, handler, nil)
+	return r.addRoute(types.EventAny, types.MatchAny, handler, nil)
 }
 
-func (r *Router) addRoute(router types.RouteType, handler types.Handler, pattern *string) types.Route {
+func (r *Router) addRoute(eventType types.EventType, matchType types.MatchType, handler types.Handler, pattern *string) types.Route {
 	prefix := r.Prefix
 	if pattern != nil {
 		prefix = prefix + ":" + *pattern
 	}
 
-	route := NewRoute(prefix, router, handler, pattern, r.State)
-	r.Routes = append(r.Routes, route)
-	return route
+	rout := NewRoute(prefix, eventType, matchType, handler, pattern, r.State, nil)
+	if eventType == types.EventAny {
+		r.AnyMsg = rout
+		return rout
+	}
+
+	r.Routes = append(r.Routes, rout)
+	return rout
+}
+
+func (r *Router) addRouteRegex(eventType types.EventType, matchType types.MatchType, handler types.Handler, pattern string) types.Route {
+	prefix := r.Prefix
+	if pattern != "" {
+		prefix = prefix + ":" + pattern
+	}
+
+	regx, err := regexp.Compile(pattern)
+	if err != nil {
+		panic(fmt.Sprintf("regex compile error: %s", err.Error()))
+	}
+
+	return NewRoute(prefix, eventType, matchType, handler, nil, r.State, regx)
 }
 
 func (r *Router) GetRoutes() []types.Route {
@@ -116,4 +144,8 @@ func (r *Router) GetParent() types.Router {
 		return nil
 	}
 	return r.Parent
+}
+
+func (r *Router) GetAnyMsg() types.Route {
+	return r.AnyMsg
 }
