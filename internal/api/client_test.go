@@ -1,252 +1,347 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
-	"reflect"
+	"github.com/AlexMayka/go-max-sdk/internal"
+	"github.com/AlexMayka/go-max-sdk/internal/core"
+	"github.com/AlexMayka/go-max-sdk/types/models"
+	reqMsg "github.com/AlexMayka/go-max-sdk/types/requests/messages"
+	resMsg "github.com/AlexMayka/go-max-sdk/types/responses/messages"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
-
-	"github.com/AlexMayka/go-max-sdk/internal/config"
+	"time"
 )
 
-type TestRequest struct {
-	PathParam     string  `path:"id"`
-	QueryParam    string  `query:"filter"`
-	OptionalQuery *string `query:"optional,omitempty"`
-	JSONField     string  `json:"data"`
-	OptionalJSON  *string `json:"optional,omitempty"`
-	IgnoredField  string  `json:"-"`
-}
+func TestClientBasicOperations(t *testing.T) {
+	t.Run("SuccessfulRequest", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != "POST" {
+				t.Errorf("Expected POST method, got %s", r.Method)
+			}
 
-func TestParseRequest(t *testing.T) {
-	client := NewClient("test-token").(*Client)
+			if r.Header.Get("Content-Type") != "application/json" {
+				t.Errorf("Expected application/json content type, got %s", r.Header.Get("Content-Type"))
+			}
 
-	cfg := &config.EndpointConfig{
-		RequestModel: reflect.TypeOf((*TestRequest)(nil)).Elem(),
-	}
+			if !strings.Contains(r.URL.RawQuery, "access_token=test_token") {
+				t.Error("Expected access_token in query parameters")
+			}
 
-	t.Run("ParseAllFields", func(t *testing.T) {
-		optional := "optional_value"
-		req := TestRequest{
-			PathParam:     "123",
-			QueryParam:    "active",
-			OptionalQuery: &optional,
-			JSONField:     "test_data",
-			OptionalJSON:  &optional,
-			IgnoredField:  "ignored",
+			response := resMsg.Send{
+				Message: models.Message{
+					Timestamp: 1234567890,
+					Body: &models.MessageBody{
+						Text: "Hello, World!",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(response)
+		}))
+		defer server.Close()
+
+		originalHost := Host
+		originalScheme := Scheme
+		defer func() {
+			Host = originalHost
+			Scheme = originalScheme
+		}()
+
+		serverURL := strings.TrimPrefix(server.URL, "http://")
+		Host = serverURL
+		Scheme = "http"
+
+		client := NewClient("test_token", internal.NewNoopLogger(), 5*time.Second, 10, 5, 3, 100*time.Millisecond)
+
+		request := reqMsg.Send{
+			NewMessageBody: models.NewMessageBody{
+				Text: stringPtr("Hello, World!"),
+			},
+			UserID: int64Ptr(12345),
 		}
 
-		pathParams, queryParams, jsonBody, err := client.parseRequest(req, cfg)
+		ctx := context.Background()
+		response, err := client.Call(ctx, core.SendMsg, request)
 
 		if err != nil {
 			t.Fatalf("Expected no error, got %v", err)
 		}
 
-		if pathParams["id"] != "123" {
-			t.Errorf("Expected path param id=123, got %s", pathParams["id"])
+		sendResponse, ok := response.(*resMsg.Send)
+		if !ok {
+			t.Fatalf("Expected *resMsg.Send, got %T", response)
 		}
 
-		if queryParams["filter"] != "active" {
-			t.Errorf("Expected query param filter=active, got %s", queryParams["filter"])
-		}
-		if queryParams["optional"] != "optional_value" {
-			t.Errorf("Expected query param optional=optional_value, got %s", queryParams["optional"])
-		}
-
-		jsonMap := jsonBody.(map[string]interface{})
-		if jsonMap["data"] != "test_data" {
-			t.Errorf("Expected json field data=test_data, got %v", jsonMap["data"])
-		}
-		if jsonMap["optional"] != "optional_value" {
-			t.Errorf("Expected json field optional=optional_value, got %v", jsonMap["optional"])
-		}
-
-		if _, exists := jsonMap["IgnoredField"]; exists {
-			t.Error("Expected ignored field to not be present in JSON body")
+		if sendResponse.Message.Body == nil || sendResponse.Message.Body.Text != "Hello, World!" {
+			t.Errorf("Expected message text 'Hello, World!', got %v", sendResponse.Message.Body)
 		}
 	})
 
-	t.Run("OmitEmptyFields", func(t *testing.T) {
-		req := TestRequest{
-			PathParam:  "123",
-			QueryParam: "active",
-			JSONField:  "test_data",
+	t.Run("HTTPError", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Bad Request"))
+		}))
+		defer server.Close()
+
+		originalHost := Host
+		originalScheme := Scheme
+		defer func() {
+			Host = originalHost
+			Scheme = originalScheme
+		}()
+
+		serverURL := strings.TrimPrefix(server.URL, "http://")
+		Host = serverURL
+		Scheme = "http"
+
+		client := NewClient("test_token", internal.NewNoopLogger(), 5*time.Second, 10, 5, 0, 100*time.Millisecond)
+
+		request := reqMsg.Send{
+			NewMessageBody: models.NewMessageBody{
+				Text: stringPtr("Hello"),
+			},
 		}
 
-		pathParams, queryParams, jsonBody, err := client.parseRequest(req, cfg)
-		_ = pathParams
-
-		if err != nil {
-			t.Fatalf("Expected no error, got %v", err)
-		}
-
-		if _, exists := queryParams["optional"]; exists {
-			t.Error("Expected optional query param to be omitted")
-		}
-
-		jsonMap := jsonBody.(map[string]interface{})
-		if _, exists := jsonMap["optional"]; exists {
-			t.Error("Expected optional json field to be omitted")
-		}
-	})
-
-	t.Run("WrongRequestType", func(t *testing.T) {
-		type WrongRequest struct {
-			Field string `json:"field"`
-		}
-
-		req := WrongRequest{Field: "test"}
-
-		_, _, _, err := client.parseRequest(req, cfg)
+		ctx := context.Background()
+		_, err := client.Call(ctx, core.SendMsg, request)
 
 		if err == nil {
-			t.Error("Expected error for wrong request type")
+			t.Fatal("Expected error for HTTP 400, got nil")
 		}
 	})
 }
 
-func TestBuildURL(t *testing.T) {
-	client := NewClient("test-token").(*Client)
+func TestClientRateLimiting(t *testing.T) {
+	t.Run("RateLimitingWorks", func(t *testing.T) {
+		requestCount := 0
+		var mu sync.Mutex
 
-	t.Run("WithPathAndQueryParams", func(t *testing.T) {
-		pathParams := map[string]string{"id": "123", "type": "user"}
-		queryParams := map[string]string{"filter": "active", "page": "1"}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			requestCount++
+			mu.Unlock()
 
-		url := client.buildURL("/users/{id}/{type}", pathParams, queryParams)
+			response := resMsg.Send{
+				Message: models.Message{
+					Timestamp: 1234567890,
+					Body: &models.MessageBody{
+						Text: fmt.Sprintf("msg_%d", requestCount),
+					},
+				},
+			}
+			json.NewEncoder(w).Encode(response)
+		}))
+		defer server.Close()
 
-		expected := fmt.Sprintf("%s://%s/users/123/user?access_token=test-token&filter=active&page=1", config.Scheme, config.Host)
-		if url != expected {
-			t.Errorf("Expected URL %s, got %s", expected, url)
+		originalHost := Host
+		originalScheme := Scheme
+		defer func() {
+			Host = originalHost
+			Scheme = originalScheme
+		}()
+
+		serverURL := strings.TrimPrefix(server.URL, "http://")
+		Host = serverURL
+		Scheme = "http"
+
+		// Настраиваем клиент с rate limiting: 2 запроса в секунду
+		client := NewClient("test_token", internal.NewNoopLogger(), 5*time.Second, 2.0, 2.0, 0, 100*time.Millisecond)
+
+		request := reqMsg.Send{
+			NewMessageBody: models.NewMessageBody{
+				Text: stringPtr("Test"),
+			},
 		}
-	})
 
-	t.Run("OnlyPathParams", func(t *testing.T) {
-		pathParams := map[string]string{"id": "123"}
-		queryParams := map[string]string{}
+		ctx := context.Background()
+		start := time.Now()
 
-		url := client.buildURL("/users/{id}", pathParams, queryParams)
-
-		expected := fmt.Sprintf("%s://%s/users/123?access_token=test-token", config.Scheme, config.Host)
-		if url != expected {
-			t.Errorf("Expected URL %s, got %s", expected, url)
+		for i := 0; i < 4; i++ {
+			_, err := client.Call(ctx, core.SendMsg, request)
+			if err != nil {
+				t.Fatalf("Request %d failed: %v", i, err)
+			}
 		}
-	})
 
-	t.Run("NoParams", func(t *testing.T) {
-		pathParams := map[string]string{}
-		queryParams := map[string]string{}
+		elapsed := time.Since(start)
 
-		url := client.buildURL("/users", pathParams, queryParams)
-
-		expected := fmt.Sprintf("%s://%s/users?access_token=test-token", config.Scheme, config.Host)
-		if url != expected {
-			t.Errorf("Expected URL %s, got %s", expected, url)
+		// С rate limit 2 req/sec, 4 запроса должны занять минимум 1 секунду
+		if elapsed < 800*time.Millisecond {
+			t.Errorf("Expected rate limiting to slow down requests, but took only %v", elapsed)
 		}
-	})
-}
 
-func TestParsePathParams(t *testing.T) {
-	client := NewClient("test-token").(*Client)
-	pathParams := make(map[string]string)
-
-	field := reflect.StructField{
-		Name: "ID",
-		Tag:  reflect.StructTag(`path:"userId"`),
-	}
-	value := reflect.ValueOf("123")
-
-	client.parsePathParams(field, value, pathParams)
-
-	if pathParams["userId"] != "123" {
-		t.Errorf("Expected pathParams[userId]=123, got %s", pathParams["userId"])
-	}
-}
-
-func TestParseQueryParams(t *testing.T) {
-	client := NewClient("test-token").(*Client)
-
-	t.Run("RequiredParam", func(t *testing.T) {
-		queryParams := make(map[string]string)
-
-		field := reflect.StructField{
-			Name: "Filter",
-			Tag:  reflect.StructTag(`query:"filter"`),
-		}
-		value := reflect.ValueOf("active")
-
-		client.parseQueryParams(field, value, queryParams)
-
-		if queryParams["filter"] != "active" {
-			t.Errorf("Expected queryParams[filter]=active, got %s", queryParams["filter"])
-		}
-	})
-
-	t.Run("OmitEmptyParam", func(t *testing.T) {
-		queryParams := make(map[string]string)
-
-		field := reflect.StructField{
-			Name: "Optional",
-			Tag:  reflect.StructTag(`query:"optional,omitempty"`),
-		}
-		var nilPtr *string
-		value := reflect.ValueOf(nilPtr)
-
-		client.parseQueryParams(field, value, queryParams)
-
-		if _, exists := queryParams["optional"]; exists {
-			t.Error("Expected optional param to be omitted")
+		if requestCount != 4 {
+			t.Errorf("Expected 4 requests, got %d", requestCount)
 		}
 	})
 }
 
-func TestParseJSONBody(t *testing.T) {
-	client := NewClient("test-token").(*Client)
+func TestClientRetryLogic(t *testing.T) {
+	t.Run("RetriesOnFailure", func(t *testing.T) {
+		attemptCount := 0
+		var mu sync.Mutex
 
-	t.Run("RequiredField", func(t *testing.T) {
-		jsonBody := make(map[string]interface{})
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			attemptCount++
+			currentAttempt := attemptCount
+			mu.Unlock()
 
-		field := reflect.StructField{
-			Name: "Data",
-			Tag:  reflect.StructTag(`json:"data"`),
+			// Первые 2 запроса возвращают ошибку, третий - успех
+			if currentAttempt <= 2 {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("Server Error"))
+				return
+			}
+
+			response := resMsg.Send{
+				Message: models.Message{
+					Timestamp: 1234567890,
+					Body: &models.MessageBody{
+						Text: "success_message",
+					},
+				},
+			}
+			json.NewEncoder(w).Encode(response)
+		}))
+		defer server.Close()
+
+		originalHost := Host
+		originalScheme := Scheme
+		defer func() {
+			Host = originalHost
+			Scheme = originalScheme
+		}()
+
+		serverURL := strings.TrimPrefix(server.URL, "http://")
+		Host = serverURL
+		Scheme = "http"
+
+		client := NewClient("test_token", internal.NewNoopLogger(), 5*time.Second, 10, 0, 3, 10*time.Millisecond)
+
+		request := reqMsg.Send{
+			NewMessageBody: models.NewMessageBody{
+				Text: stringPtr("Retry test"),
+			},
 		}
-		value := reflect.ValueOf("test_value")
 
-		client.parseJSONBody(field, value, jsonBody)
+		ctx := context.Background()
+		response, err := client.Call(ctx, core.SendMsg, request)
 
-		if jsonBody["data"] != "test_value" {
-			t.Errorf("Expected jsonBody[data]=test_value, got %v", jsonBody["data"])
+		if err != nil {
+			t.Fatalf("Expected success after retries, got error: %v", err)
+		}
+
+		sendResponse, ok := response.(*resMsg.Send)
+		if !ok || sendResponse.Message.Body.Text != "success_message" {
+			t.Errorf("Expected successful response, got %v", response)
+		}
+
+		if attemptCount != 3 {
+			t.Errorf("Expected 3 attempts, got %d", attemptCount)
+		}
+	})
+}
+
+func TestRequestParsing(t *testing.T) {
+	t.Run("ParsePathParams", func(t *testing.T) {
+		client := &Client{token: "test"}
+
+		cfg := EndpointConfigs[GetMsgByID]
+
+		request := reqMsg.GetByID{
+			MessageID: "test_message_123",
+		}
+
+		pathParams, queryParams, jsonBody, err := client.parseRequest(request, cfg)
+
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+
+		if pathParams["messageId"] != "test_message_123" {
+			t.Errorf("Expected messageId 'test_message_123', got '%s'", pathParams["messageId"])
+		}
+
+		if len(queryParams) != 0 {
+			t.Errorf("Expected no query params, got %v", queryParams)
+		}
+
+		if jsonBody == nil {
+			t.Error("Expected jsonBody to be non-nil")
 		}
 	})
 
-	t.Run("OmitEmptyField", func(t *testing.T) {
-		jsonBody := make(map[string]interface{})
+	t.Run("InvalidRequestType", func(t *testing.T) {
+		client := &Client{token: "test"}
+		cfg := EndpointConfigs[core.SendMsg]
 
-		field := reflect.StructField{
-			Name: "Optional",
-			Tag:  reflect.StructTag(`json:"optional,omitempty"`),
+		wrongRequest := reqMsg.GetByID{MessageID: "test"}
+
+		_, _, _, err := client.parseRequest(wrongRequest, cfg)
+
+		if err == nil {
+			t.Fatal("Expected error for invalid request type, got nil")
 		}
-		var nilPtr *string
-		value := reflect.ValueOf(nilPtr)
 
-		client.parseJSONBody(field, value, jsonBody)
+		if !strings.Contains(err.Error(), "invalid request type") {
+			t.Errorf("Expected 'invalid request type' error, got: %v", err)
+		}
+	})
+}
 
-		if _, exists := jsonBody["optional"]; exists {
-			t.Error("Expected optional field to be omitted")
+func TestURLBuilding(t *testing.T) {
+	t.Run("BuildURLWithPathAndQuery", func(t *testing.T) {
+		client := &Client{token: "test_token_123"}
+
+		pathParams := map[string]string{
+			"chatId":    "12345",
+			"messageId": "msg_67890",
+		}
+
+		queryParams := map[string]string{
+			"limit":  "50",
+			"offset": "100",
+		}
+
+		url := client.buildURL("/chats/{chatId}/messages/{messageId}", pathParams, queryParams)
+
+		expectedParts := []string{
+			"botapi.max.ru/chats/12345/messages/msg_67890",
+			"access_token=test_token_123",
+			"limit=50",
+			"offset=100",
+		}
+
+		for _, part := range expectedParts {
+			if !strings.Contains(url, part) {
+				t.Errorf("Expected URL to contain '%s', got: %s", part, url)
+			}
 		}
 	})
 
-	t.Run("IgnoredField", func(t *testing.T) {
-		jsonBody := make(map[string]interface{})
+	t.Run("BuildURLWithoutToken", func(t *testing.T) {
+		client := &Client{token: ""}
 
-		field := reflect.StructField{
-			Name: "Ignored",
-			Tag:  reflect.StructTag(`json:"-"`),
-		}
-		value := reflect.ValueOf("ignored_value")
+		url := client.buildURL("/test", map[string]string{}, map[string]string{})
 
-		client.parseJSONBody(field, value, jsonBody)
-
-		if _, exists := jsonBody["Ignored"]; exists {
-			t.Error("Expected ignored field to not be present")
+		if strings.Contains(url, "access_token") {
+			t.Errorf("Expected no access_token in URL without token, got: %s", url)
 		}
 	})
+}
+
+// Helper functions
+func stringPtr(s string) *string {
+	return &s
+}
+
+func int64Ptr(i int64) *int64 {
+	return &i
 }

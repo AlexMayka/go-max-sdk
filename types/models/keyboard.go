@@ -14,32 +14,46 @@ type InlineKeyboardButton struct {
 	// Текст на кнопке
 	Text string `json:"text"`
 
-	// Payload для callback кнопок
+	// Payload для кнопок (до 1024 символов)
 	Payload *string `json:"payload,omitempty"`
 
-	// URL для link кнопок
-	URL *string `json:"url,omitempty"`
+	// Намерение кнопки
+	Intent *ButtonIntent `json:"intent,omitempty"`
 }
 
 // InlineKeyboardButtonType представляет тип кнопки в inline-клавиатуре
 type InlineKeyboardButtonType string
 
 const (
-	// InlineKeyboardButtonTypeCallback Callback кнопка - сервер MAX отправляет событие с типом message_callback
+	// InlineKeyboardButtonTypeCallback Callback кнопка
 	InlineKeyboardButtonTypeCallback InlineKeyboardButtonType = "callback"
 
-	// InlineKeyboardButtonTypeLink Link кнопка - позволяет открыть ссылку в новой вкладке
+	// InlineKeyboardButtonTypeLink Link кнопка
 	InlineKeyboardButtonTypeLink InlineKeyboardButtonType = "link"
 
-	// InlineKeyboardButtonTypeRequestContact Request contact кнопка - запрашивает у пользователя разрешение на доступ к контактам
-	InlineKeyboardButtonTypeRequestContact InlineKeyboardButtonType = "request_contact"
-
-	// InlineKeyboardButtonTypeRequestGeoLocation Request geo location кнопка - запрашивает у пользователя его местоположение
+	// InlineKeyboardButtonTypeRequestGeoLocation Request geo location кнопка
 	InlineKeyboardButtonTypeRequestGeoLocation InlineKeyboardButtonType = "request_geo_location"
 
-	// InlineKeyboardButtonTypeOpenApp Open app кнопка - открывает мини-приложение
+	// InlineKeyboardButtonTypeRequestContact Request contact кнопка
+	InlineKeyboardButtonTypeRequestContact InlineKeyboardButtonType = "request_contact"
+
+	// InlineKeyboardButtonTypeOpenApp Open app кнопка
 	InlineKeyboardButtonTypeOpenApp InlineKeyboardButtonType = "open_app"
 
-	// InlineKeyboardButtonTypeMessage Message кнопка - отправляет боту текстовое сообщение
+	// InlineKeyboardButtonTypeMessage Message кнопка
 	InlineKeyboardButtonTypeMessage InlineKeyboardButtonType = "message"
+)
+
+// ButtonIntent представляет намерение кнопки
+type ButtonIntent string
+
+const (
+	// ButtonIntentPositive положительное намерение
+	ButtonIntentPositive ButtonIntent = "positive"
+
+	// ButtonIntentNegative негативное намерение
+	ButtonIntentNegative ButtonIntent = "negative"
+
+	// ButtonIntentDefault обычное намерение
+	ButtonIntentDefault ButtonIntent = "default"
 )

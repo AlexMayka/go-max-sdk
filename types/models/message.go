@@ -109,10 +109,25 @@ type NewMessageBody struct {
 // AttachmentRequest представляет запрос на вложение
 type AttachmentRequest struct {
 	// Тип вложения
-	Type string `json:"type"`
+	Type AttachmentType `json:"type"`
 	// Полезная нагрузка для запроса на прикрепление (может быть разных типов)
 	Payload interface{} `json:"payload"`
 }
+
+// AttachmentType представляет тип вложения
+type AttachmentType string
+
+const (
+	AttachmentTypeImage          AttachmentType = "image"
+	AttachmentTypeVideo          AttachmentType = "video"
+	AttachmentTypeAudio          AttachmentType = "audio"
+	AttachmentTypeFile           AttachmentType = "file"
+	AttachmentTypeSticker        AttachmentType = "sticker"
+	AttachmentTypeContact        AttachmentType = "contact"
+	AttachmentTypeInlineKeyboard AttachmentType = "inline_keyboard"
+	AttachmentTypeLocation       AttachmentType = "location"
+	AttachmentTypeShare          AttachmentType = "share"
+)
 
 // PhotoAttachmentRequestPayload запрос на прикрепление изображения (все поля являются взаимоисключающими)
 type PhotoAttachmentRequestPayload struct {
@@ -124,9 +139,10 @@ type PhotoAttachmentRequestPayload struct {
 	Photos *PhotosPayload `json:"photos,omitempty"`
 }
 
-// InlineKeyboardAttachmentPayload полезная нагрузка для inline-клавиатуры
-type InlineKeyboardAttachmentPayload struct {
-	InlineKeyboard
+// InlineKeyboardAttachmentRequestPayload полезная нагрузка для inline-клавиатуры
+type InlineKeyboardAttachmentRequestPayload struct {
+	// Двумерный массив кнопок
+	Buttons [][]InlineKeyboardButton `json:"buttons"`
 }
 
 // PhotosPayload представляет полезную нагрузку для фотографий

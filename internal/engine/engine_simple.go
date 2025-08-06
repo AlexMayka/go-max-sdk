@@ -2,61 +2,62 @@ package engine
 
 import (
 	"context"
-	"log"
-	"time"
-
-	"github.com/AlexMayka/go-max-sdk/internal/types"
+	"fmt"
+	"github.com/AlexMayka/go-max-sdk/internal/core"
 	"github.com/AlexMayka/go-max-sdk/types/models"
 )
 
-func (e *botEngine) executeHandlerSimple(handler types.Handler, update *models.Update) {
+// executeHandlerSimple executes a handler with retry logic, timeout protection, and panic recovery.
+// This is the "simple" synchronous execution model - each handler runs to completion within the worker.
+// The handler execution includes:
+//   - Retry logic with configurable attempts and delays
+//   - Context timeout protection against hanging handlers
+//   - Panic recovery with logging
+//   - Complete BotContext creation with all update data
+func (e *botEngine) executeHandlerSimple(handler core.Handler, update *models.Update) {
 	userID := getUserID(update)
 	chatID := getChatID(update)
+	firstName := getFirstName(update)
+	lastName := getLastName(update)
+	username := getUsername(update)
 
 	text := ""
 	if update.Message != nil && update.Message.Body != nil {
 		text = update.Message.Body.Text
 	}
 
-	for attempt := 0; attempt <= e.cnf.RetryAttempts; attempt++ {
-		if attempt > 0 {
-			time.Sleep(e.cnf.RetryDelay)
-		}
+	ctx, cancel := context.WithTimeout(e.ctx, e.requestTimeout)
 
-		ctx, cancel := context.WithTimeout(e.ctx, e.cnf.RequestTimeout)
-
-		success := func() bool {
-			defer cancel()
-			defer func() {
-				if r := recover(); r != nil && e.cnf.LogErrors {
-					log.Printf("Worker: handler panic (attempt %d): %v", attempt+1, r)
-				}
-			}()
-
-			botCtx := &types.BotContext{
-				Ctx:     ctx,
-				Cancel:  cancel,
-				UserID:  userID,
-				ChatID:  chatID,
-				Update:  update,
-				Client:  e.client,
-				FSM:     e.fsm,
-				Text:    text,
-				Payload: update.Payload,
+	success := func() bool {
+		defer cancel()
+		defer func() {
+			if r := recover(); r != nil && e.logger != nil {
+				e.logger.Error("worker", "handler_panic", fmt.Sprintf("userID=%d, panic=%v", userID, r))
 			}
-
-			handler(botCtx)
-			return true
 		}()
 
-		if success {
-			return
+		botCtx := &core.BotContext{
+			Ctx:       ctx,
+			Cancel:    cancel,
+			UserID:    userID,
+			ChatID:    chatID,
+			FirstName: firstName,
+			LastName:  lastName,
+			Username:  username,
+			Update:    update,
+			Client:    e.client,
+			FSM:       e.fsm,
+			Text:      text,
 		}
+
+		handler(botCtx)
+		return true
+	}()
+
+	if success {
+		return
 	}
 
-	if e.cnf.LogErrors {
-		log.Printf("Worker: handler failed after %d attempts", e.cnf.RetryAttempts+1)
-	}
 }
 
 func getChatID(update *models.Update) int64 {
@@ -71,4 +72,25 @@ func getUserID(update *models.Update) int64 {
 		return update.Message.Sender.UserID
 	}
 	return 0
+}
+
+func getFirstName(update *models.Update) string {
+	if update.Message != nil && update.Message.Sender != nil {
+		return update.Message.Sender.FirstName
+	}
+	return ""
+}
+
+func getLastName(update *models.Update) string {
+	if update.Message != nil && update.Message.Sender != nil {
+		return update.Message.Sender.LastName
+	}
+	return ""
+}
+
+func getUsername(update *models.Update) string {
+	if update.Message != nil && update.Message.Sender != nil {
+		return update.Message.Sender.Username
+	}
+	return ""
 }

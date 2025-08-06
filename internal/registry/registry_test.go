@@ -1,16 +1,16 @@
 package registry
 
 import (
+	"github.com/AlexMayka/go-max-sdk/internal/core"
 	"strings"
 	"testing"
 
 	"github.com/AlexMayka/go-max-sdk/internal/router"
-	"github.com/AlexMayka/go-max-sdk/internal/types"
 )
 
-func createTestMiddleware(name string, executionOrder *[]string) types.Middleware {
-	return func(next types.Handler) types.Handler {
-		return func(ctx *types.BotContext) {
+func createTestMiddleware(name string, executionOrder *[]string) core.Middleware {
+	return func(next core.Handler) core.Handler {
+		return func(ctx *core.BotContext) {
 			*executionOrder = append(*executionOrder, name+" start")
 			next(ctx)
 			*executionOrder = append(*executionOrder, name+" end")
@@ -18,8 +18,8 @@ func createTestMiddleware(name string, executionOrder *[]string) types.Middlewar
 	}
 }
 
-func createTestHandler(name string, executionOrder *[]string) types.Handler {
-	return func(ctx *types.BotContext) {
+func createTestHandler(name string, executionOrder *[]string) core.Handler {
+	return func(ctx *core.BotContext) {
 		*executionOrder = append(*executionOrder, name+" handler")
 	}
 }
@@ -41,14 +41,14 @@ func TestMiddlewareExecutionOrder(t *testing.T) {
 
 	registry := BuildFrom(root)
 
-	handlers, _ := registry.GetHandlers("", types.EventMessage)
+	handlers, _ := registry.GetHandlers("", core.EventMessage)
 	if len(handlers) == 0 {
 		t.Fatal("No handlers found")
 	}
 
 	wrappedHandler := handlers[0].Handler
 
-	wrappedHandler(&types.BotContext{})
+	wrappedHandler(&core.BotContext{})
 
 	expected := []string{
 		"Root1 start",
@@ -94,14 +94,14 @@ func TestMultipleRoutes(t *testing.T) {
 
 	registry := BuildFrom(root)
 
-	handlers, _ := registry.GetHandlers("", types.EventCommand)
+	handlers, _ := registry.GetHandlers("", core.EventCommand)
 	if len(handlers) > 0 {
-		handlers[0].Handler(&types.BotContext{})
+		handlers[0].Handler(&core.BotContext{})
 	}
 
-	handlers, _ = registry.GetHandlers("", types.EventMessage)
+	handlers, _ = registry.GetHandlers("", core.EventMessage)
 	if len(handlers) > 0 {
-		handlers[0].Handler(&types.BotContext{})
+		handlers[0].Handler(&core.BotContext{})
 	}
 
 	if len(order1) == 0 || len(order2) == 0 {
@@ -115,10 +115,10 @@ func TestMultipleRoutes(t *testing.T) {
 func TestStateHandling(t *testing.T) {
 	root := router.NewRouter("", nil)
 
-	route1 := root.OnMessage("test", func(ctx *types.BotContext) {})
+	route1 := root.OnMessage("test", func(ctx *core.BotContext) {})
 	route1.UseState("auth")
 
-	root.OnMessage("help", func(ctx *types.BotContext) {})
+	root.OnMessage("help", func(ctx *core.BotContext) {})
 
 	registry := BuildFrom(root)
 
@@ -138,11 +138,11 @@ func BenchmarkDispatchMapBuild(b *testing.B) {
 
 	for i := 0; i < 10; i++ {
 		group := root.Group("group")
-		group.Use(func(next types.Handler) types.Handler { return next })
+		group.Use(func(next core.Handler) core.Handler { return next })
 
 		for j := 0; j < 10; j++ {
-			route := group.OnMessage("test", func(ctx *types.BotContext) {})
-			route.Use(func(next types.Handler) types.Handler { return next })
+			route := group.OnMessage("test", func(ctx *core.BotContext) {})
+			route.Use(func(next core.Handler) core.Handler { return next })
 		}
 	}
 
@@ -154,12 +154,12 @@ func BenchmarkDispatchMapBuild(b *testing.B) {
 
 func BenchmarkDispatchMapAccess(b *testing.B) {
 	root := router.NewRouter("", nil)
-	root.OnMessage("test", func(ctx *types.BotContext) {})
+	root.OnMessage("test", func(ctx *core.BotContext) {})
 
 	registry := BuildFrom(root)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = registry.GetHandlers("", types.EventMessage)
+		_, _ = registry.GetHandlers("", core.EventMessage)
 	}
 }

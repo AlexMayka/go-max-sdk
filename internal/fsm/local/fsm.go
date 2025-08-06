@@ -1,7 +1,7 @@
 package local
 
 import (
-	"github.com/AlexMayka/go-max-sdk/internal/types"
+	"github.com/AlexMayka/go-max-sdk/internal/core"
 	"sync"
 )
 
@@ -10,7 +10,7 @@ type FSM struct {
 	rm  sync.RWMutex
 }
 
-func NewFSM() types.FSM {
+func NewFSM() core.FSM {
 	return &FSM{fsm: make(map[int64]*data), rm: sync.RWMutex{}}
 }
 
@@ -53,7 +53,7 @@ func (f *FSM) SetValue(id int64, param string, data string) bool {
 	f.rm.RLock()
 	value, ok := f.fsm[id]
 	f.rm.RUnlock()
-	
+
 	if ok {
 		return value.SetValue(param, data)
 	}
@@ -65,7 +65,7 @@ func (f *FSM) GetValue(id int64, param string) (string, bool) {
 	f.rm.RLock()
 	value, ok := f.fsm[id]
 	f.rm.RUnlock()
-	
+
 	if ok {
 		return value.GetValue(param)
 	}

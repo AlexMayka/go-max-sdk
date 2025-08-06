@@ -13,9 +13,6 @@ type Update struct {
 	// Новое созданное сообщение
 	Message *Message `json:"message,omitempty"`
 
-	// Payload кнопки (только для message_callback)
-	Payload *string `json:"payload,omitempty"`
-
 	// Текущий язык пользователя в формате IETF BCP 47. Доступно только в диалогах (опционально)
 	UserLocale *string `json:"user_locale,omitempty"`
 }

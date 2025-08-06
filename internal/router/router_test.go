@@ -1,10 +1,9 @@
 package router
 
 import (
+	"github.com/AlexMayka/go-max-sdk/internal/core"
 	"regexp"
 	"testing"
-
-	"github.com/AlexMayka/go-max-sdk/internal/types"
 )
 
 func TestRouterBasicOperations(t *testing.T) {
@@ -61,13 +60,13 @@ func TestRouterBasicOperations(t *testing.T) {
 }
 
 func TestRouterMiddleware(t *testing.T) {
-	middleware1 := func(next types.Handler) types.Handler {
-		return func(ctx *types.BotContext) {
+	middleware1 := func(next core.Handler) core.Handler {
+		return func(ctx *core.BotContext) {
 			next(ctx)
 		}
 	}
-	middleware2 := func(next types.Handler) types.Handler {
-		return func(ctx *types.BotContext) {
+	middleware2 := func(next core.Handler) core.Handler {
+		return func(ctx *core.BotContext) {
 			next(ctx)
 		}
 	}
@@ -102,7 +101,7 @@ func TestRouterMiddleware(t *testing.T) {
 }
 
 func TestRouterRoutes(t *testing.T) {
-	handler := func(ctx *types.BotContext) {}
+	handler := func(ctx *core.BotContext) {}
 
 	t.Run("OnStarted", func(t *testing.T) {
 		router := NewRouter("", nil).(*Router)
@@ -117,7 +116,7 @@ func TestRouterRoutes(t *testing.T) {
 		}
 
 		r := router.Routes[0]
-		if r.GetType() != types.EventBotStarted {
+		if r.GetType() != core.EventBotStarted {
 			t.Errorf("Expected route type RouteBotStarted, got %v", r.GetType())
 		}
 		if r.GetPattern() != nil {
@@ -134,7 +133,7 @@ func TestRouterRoutes(t *testing.T) {
 		}
 
 		r := router.Routes[0]
-		if r.GetType() != types.EventMessage {
+		if r.GetType() != core.EventMessage {
 			t.Errorf("Expected route type RouteMsg, got %v", r.GetType())
 		}
 		if r.GetPattern() == nil || *r.GetPattern() != "hello" {
@@ -154,7 +153,7 @@ func TestRouterRoutes(t *testing.T) {
 		}
 
 		r := router.Routes[0]
-		if r.GetType() != types.EventCommand {
+		if r.GetType() != core.EventCommand {
 			t.Errorf("Expected route type RouteCommand, got %v", r.GetType())
 		}
 		if r.GetPattern() == nil || *r.GetPattern() != "start" {
@@ -171,7 +170,7 @@ func TestRouterRoutes(t *testing.T) {
 		}
 
 		r := router.Routes[0]
-		if r.GetType() != types.EventCallback {
+		if r.GetType() != core.EventCallback {
 			t.Errorf("Expected route type RouteCallback, got %v", r.GetType())
 		}
 		if r.GetPattern() == nil || *r.GetPattern() != "button_click" {
@@ -188,7 +187,7 @@ func TestRouterRoutes(t *testing.T) {
 		}
 
 		r := router.GetAnyMsg()
-		if r.GetType() != types.EventAny {
+		if r.GetType() != core.EventAny {
 			t.Errorf("Expected route type RouteAny, got %v", r.GetType())
 		}
 		if r.GetPattern() != nil {
@@ -198,7 +197,7 @@ func TestRouterRoutes(t *testing.T) {
 }
 
 func TestRouterRegexValidation(t *testing.T) {
-	handler := func(ctx *types.BotContext) {}
+	handler := func(ctx *core.BotContext) {}
 
 	t.Run("ValidRegex", func(t *testing.T) {
 		router := NewRouter("", nil).(*Router)
@@ -209,8 +208,12 @@ func TestRouterRegexValidation(t *testing.T) {
 			t.Error("Expected route to be created")
 		}
 
+		if len(router.Routes) == 0 {
+			t.Fatal("Expected at least one route to be created")
+		}
+
 		r := router.Routes[0]
-		if r.GetType() != types.EventMessage {
+		if r.GetType() != core.EventMessage {
 			t.Errorf("Expected route type EventMessage, got %v", r.GetType())
 		}
 		if r.GetPattern() == nil || *r.GetPattern() != `^\d+$` {
@@ -259,7 +262,7 @@ func TestRouterRegexValidation(t *testing.T) {
 }
 
 func TestRouterPrefixBuilding(t *testing.T) {
-	handler := func(ctx *types.BotContext) {}
+	handler := func(ctx *core.BotContext) {}
 
 	t.Run("PrefixWithPattern", func(t *testing.T) {
 		router := NewRouter("api", nil).(*Router)
@@ -307,9 +310,9 @@ func TestRouterPrefixBuilding(t *testing.T) {
 }
 
 func TestRouterChaining(t *testing.T) {
-	handler := func(ctx *types.BotContext) {}
-	middleware := func(next types.Handler) types.Handler {
-		return func(ctx *types.BotContext) { next(ctx) }
+	handler := func(ctx *core.BotContext) {}
+	middleware := func(next core.Handler) core.Handler {
+		return func(ctx *core.BotContext) { next(ctx) }
 	}
 
 	t.Run("FluentAPI", func(t *testing.T) {
@@ -350,7 +353,7 @@ func TestRouterChaining(t *testing.T) {
 }
 
 func TestRouterEdgeCases(t *testing.T) {
-	handler := func(ctx *types.BotContext) {}
+	handler := func(ctx *core.BotContext) {}
 
 	t.Run("EmptyPatterns", func(t *testing.T) {
 		router := NewRouter("", nil).(*Router)
@@ -408,7 +411,7 @@ func TestRouterEdgeCases(t *testing.T) {
 		}
 
 		for _, route := range router.Routes {
-			if route.GetType() != types.EventMessage {
+			if route.GetType() != core.EventMessage {
 				t.Error("Expected all routes to be EventMessage type")
 			}
 		}
@@ -448,7 +451,7 @@ func TestRegexCompilation(t *testing.T) {
 		{"Invalid quantifier", "*invalid", false},
 	}
 
-	handler := func(ctx *types.BotContext) {}
+	handler := func(ctx *core.BotContext) {}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

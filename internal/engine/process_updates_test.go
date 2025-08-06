@@ -1,10 +1,10 @@
 package engine
 
 import (
+	"github.com/AlexMayka/go-max-sdk/internal/core"
 	"regexp"
 	"testing"
 
-	"github.com/AlexMayka/go-max-sdk/internal/types"
 	"github.com/AlexMayka/go-max-sdk/types/models"
 )
 
@@ -57,11 +57,11 @@ func (m *mockFSM) GetValue(id int64, param string) (string, bool) {
 }
 
 type mockRegistry struct {
-	handlers map[string]map[types.EventType][]types.RouteHandler
+	handlers map[string]map[core.EventType][]core.RouteHandler
 	states   []string
 }
 
-func (m *mockRegistry) GetHandlers(state string, event types.EventType) ([]types.RouteHandler, bool) {
+func (m *mockRegistry) GetHandlers(state string, event core.EventType) ([]core.RouteHandler, bool) {
 	if m.handlers == nil {
 		return nil, false
 	}
@@ -86,12 +86,12 @@ func (m *mockRegistry) GetStates() []string {
 	return m.states
 }
 
-func (m *mockRegistry) AddHandler(state string, event types.EventType, handler types.RouteHandler) {
+func (m *mockRegistry) AddHandler(state string, event core.EventType, handler core.RouteHandler) {
 	if m.handlers == nil {
-		m.handlers = make(map[string]map[types.EventType][]types.RouteHandler)
+		m.handlers = make(map[string]map[core.EventType][]core.RouteHandler)
 	}
 	if m.handlers[state] == nil {
-		m.handlers[state] = make(map[types.EventType][]types.RouteHandler)
+		m.handlers[state] = make(map[core.EventType][]core.RouteHandler)
 	}
 	m.handlers[state][event] = append(m.handlers[state][event], handler)
 
@@ -102,12 +102,12 @@ func (m *mockRegistry) AddHandler(state string, event types.EventType, handler t
 
 type mockRoute struct {
 	pattern       *string
-	handler       types.Handler
-	matchType     types.MatchType
-	eventType     types.EventType
+	handler       core.Handler
+	matchType     core.MatchType
+	eventType     core.EventType
 	prefix        string
 	state         string
-	middleware    []types.Middleware
+	middleware    []core.Middleware
 	compiledRegex *regexp.Regexp
 }
 
@@ -115,15 +115,15 @@ func (m *mockRoute) GetPattern() *string {
 	return m.pattern
 }
 
-func (m *mockRoute) GetHandler() types.Handler {
+func (m *mockRoute) GetHandler() core.Handler {
 	return m.handler
 }
 
-func (m *mockRoute) GetMatchType() types.MatchType {
+func (m *mockRoute) GetMatchType() core.MatchType {
 	return m.matchType
 }
 
-func (m *mockRoute) GetType() types.EventType {
+func (m *mockRoute) GetType() core.EventType {
 	return m.eventType
 }
 
@@ -135,7 +135,7 @@ func (m *mockRoute) GetState() string {
 	return m.state
 }
 
-func (m *mockRoute) GetMiddleware() []types.Middleware {
+func (m *mockRoute) GetMiddleware() []core.Middleware {
 	return m.middleware
 }
 
@@ -143,19 +143,19 @@ func (m *mockRoute) GetCompiledRegex() *regexp.Regexp {
 	return m.compiledRegex
 }
 
-func (m *mockRoute) UseState(state string) types.Route {
+func (m *mockRoute) UseState(state string) core.Route {
 	m.state = state
 	return m
 }
 
-func (m *mockRoute) Use(middlewares ...types.Middleware) types.Route {
+func (m *mockRoute) Use(middlewares ...core.Middleware) core.Route {
 	m.middleware = append(m.middleware, middlewares...)
 	return m
 }
 
-func newMockRoute(pattern string, handler types.Handler, matchType types.MatchType, eventType types.EventType) *mockRoute {
+func newMockRoute(pattern string, handler core.Handler, matchType core.MatchType, eventType core.EventType) *mockRoute {
 	var compiledRegex *regexp.Regexp
-	if matchType == types.MatchRegex && pattern != "" {
+	if matchType == core.MatchRegex && pattern != "" {
 		var err error
 		compiledRegex, err = regexp.Compile(pattern)
 		if err != nil {
@@ -172,8 +172,8 @@ func newMockRoute(pattern string, handler types.Handler, matchType types.MatchTy
 	}
 }
 
-func newMockRouteHandler(match types.MatchType, pattern string, handler types.Handler, eventType types.EventType) types.RouteHandler {
-	return types.RouteHandler{
+func newMockRouteHandler(match core.MatchType, pattern string, handler core.Handler, eventType core.EventType) core.RouteHandler {
+	return core.RouteHandler{
 		Match:   match,
 		Handler: handler,
 		Route:   newMockRoute(pattern, handler, match, eventType),
@@ -181,15 +181,15 @@ func newMockRouteHandler(match types.MatchType, pattern string, handler types.Ha
 }
 
 func TestProcessUpdate(t *testing.T) {
-	mockHandler := func(ctx *types.BotContext) {}
+	mockHandler := func(ctx *core.BotContext) {}
 
 	t.Run("MessageWithoutState", func(t *testing.T) {
 		fsm := &mockFSM{}
 		registry := &mockRegistry{}
 
 		// Добавляем handler для пустого state
-		registry.AddHandler("", types.EventMessage, newMockRouteHandler(
-			types.MatchExact, "hello", mockHandler, types.EventMessage,
+		registry.AddHandler("", core.EventMessage, newMockRouteHandler(
+			core.MatchExact, "hello", mockHandler, core.EventMessage,
 		))
 
 		engine := &botEngine{
@@ -219,8 +219,8 @@ func TestProcessUpdate(t *testing.T) {
 		fsm.SetStateUser(123, "waiting_input")
 
 		// Добавляем handler для конкретного state
-		registry.AddHandler("waiting_input", types.EventMessage, newMockRouteHandler(
-			types.MatchExact, "response", mockHandler, types.EventMessage,
+		registry.AddHandler("waiting_input", core.EventMessage, newMockRouteHandler(
+			core.MatchExact, "response", mockHandler, core.EventMessage,
 		))
 
 		engine := &botEngine{
@@ -246,8 +246,8 @@ func TestProcessUpdate(t *testing.T) {
 		fsm := &mockFSM{}
 		registry := &mockRegistry{}
 
-		registry.AddHandler("", types.EventCommand, newMockRouteHandler(
-			types.MatchCommand, "/start", mockHandler, types.EventCommand,
+		registry.AddHandler("", core.EventCommand, newMockRouteHandler(
+			core.MatchCommand, "/start", mockHandler, core.EventCommand,
 		))
 
 		engine := &botEngine{
@@ -274,8 +274,8 @@ func TestProcessUpdate(t *testing.T) {
 		registry := &mockRegistry{}
 
 		// Добавляем только Any handler
-		registry.AddHandler("", types.EventAny, newMockRouteHandler(
-			types.MatchAny, "", mockHandler, types.EventAny,
+		registry.AddHandler("", core.EventAny, newMockRouteHandler(
+			core.MatchAny, "", mockHandler, core.EventAny,
 		))
 
 		engine := &botEngine{
@@ -333,7 +333,7 @@ func TestGetEventType(t *testing.T) {
 		}
 
 		eventType := engine.getEventType(update)
-		if eventType != types.EventMessage {
+		if eventType != core.EventMessage {
 			t.Errorf("Expected EventMessage, got %v", eventType)
 		}
 	})
@@ -347,7 +347,7 @@ func TestGetEventType(t *testing.T) {
 		}
 
 		eventType := engine.getEventType(update)
-		if eventType != types.EventCommand {
+		if eventType != core.EventCommand {
 			t.Errorf("Expected EventCommand, got %v", eventType)
 		}
 	})
@@ -358,7 +358,7 @@ func TestGetEventType(t *testing.T) {
 		}
 
 		eventType := engine.getEventType(update)
-		if eventType != types.EventCallback {
+		if eventType != core.EventCallback {
 			t.Errorf("Expected EventCallback, got %v", eventType)
 		}
 	})
@@ -369,7 +369,7 @@ func TestGetEventType(t *testing.T) {
 		}
 
 		eventType := engine.getEventType(update)
-		if eventType != types.EventNone {
+		if eventType != core.EventNone {
 			t.Errorf("Expected EventNone, got %v", eventType)
 		}
 	})
@@ -379,7 +379,7 @@ func TestMatching(t *testing.T) {
 	t.Run("CheckCommand", func(t *testing.T) {
 		pattern := "/start"
 		message := "/start"
-		handler := newMockRouteHandler(types.MatchCommand, pattern, nil, types.EventCommand)
+		handler := newMockRouteHandler(core.MatchCommand, pattern, nil, core.EventCommand)
 
 		result := checkCommand(&message, handler)
 		if !result {
@@ -396,7 +396,7 @@ func TestMatching(t *testing.T) {
 	t.Run("CheckExact", func(t *testing.T) {
 		pattern := "hello"
 		message := "hello"
-		handler := newMockRouteHandler(types.MatchExact, pattern, nil, types.EventMessage)
+		handler := newMockRouteHandler(core.MatchExact, pattern, nil, core.EventMessage)
 
 		result := checkExact(&message, handler)
 		if !result {
@@ -413,7 +413,7 @@ func TestMatching(t *testing.T) {
 	t.Run("CheckPrefix", func(t *testing.T) {
 		pattern := "hello"
 		message := "hello world"
-		handler := newMockRouteHandler(types.MatchPrefix, pattern, nil, types.EventMessage)
+		handler := newMockRouteHandler(core.MatchPrefix, pattern, nil, core.EventMessage)
 
 		result := checkPrefix(&message, handler)
 		if !result {
@@ -430,7 +430,7 @@ func TestMatching(t *testing.T) {
 	t.Run("CheckSuffix", func(t *testing.T) {
 		pattern := "world"
 		message := "hello world"
-		handler := newMockRouteHandler(types.MatchSuffix, pattern, nil, types.EventMessage)
+		handler := newMockRouteHandler(core.MatchSuffix, pattern, nil, core.EventMessage)
 
 		result := checkSuffix(&message, handler)
 		if !result {
@@ -447,7 +447,7 @@ func TestMatching(t *testing.T) {
 	t.Run("CheckContains", func(t *testing.T) {
 		pattern := "test"
 		message := "this is a test message"
-		handler := newMockRouteHandler(types.MatchContains, pattern, nil, types.EventMessage)
+		handler := newMockRouteHandler(core.MatchContains, pattern, nil, core.EventMessage)
 
 		result := checkContains(&message, handler)
 		if !result {
@@ -464,7 +464,7 @@ func TestMatching(t *testing.T) {
 	t.Run("CheckRegex", func(t *testing.T) {
 		pattern := `^\d+$`
 		message := "12345"
-		handler := newMockRouteHandler(types.MatchRegex, pattern, nil, types.EventMessage)
+		handler := newMockRouteHandler(core.MatchRegex, pattern, nil, core.EventMessage)
 
 		result := checkRegex(&message, handler)
 		if !result {
@@ -478,7 +478,7 @@ func TestMatching(t *testing.T) {
 		}
 
 		// Test nil regex (when compilation failed)
-		nilRegexHandler := newMockRouteHandler(types.MatchExact, "valid", nil, types.EventMessage) // не regex
+		nilRegexHandler := newMockRouteHandler(core.MatchExact, "valid", nil, core.EventMessage) // не regex
 		nilRegexHandler.Route.(*mockRoute).compiledRegex = nil
 		result = checkRegex(&message, nilRegexHandler)
 		if result {
@@ -489,7 +489,7 @@ func TestMatching(t *testing.T) {
 	t.Run("CheckCallback", func(t *testing.T) {
 		pattern := "button_1"
 		callbackID := "button_1"
-		handler := newMockRouteHandler(types.MatchCallback, pattern, nil, types.EventCallback)
+		handler := newMockRouteHandler(core.MatchCallback, pattern, nil, core.EventCallback)
 
 		result := checkCallback(&callbackID, handler)
 		if !result {
@@ -505,7 +505,7 @@ func TestMatching(t *testing.T) {
 
 	t.Run("NilInputs", func(t *testing.T) {
 		pattern := "test"
-		handler := newMockRouteHandler(types.MatchExact, pattern, nil, types.EventMessage)
+		handler := newMockRouteHandler(core.MatchExact, pattern, nil, core.EventMessage)
 
 		if checkExact(nil, handler) {
 			t.Error("Expected nil message not to match")
